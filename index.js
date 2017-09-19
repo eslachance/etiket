@@ -8,10 +8,10 @@ require("moment-duration-format");
 
 const { inspect } = require('util');
 
-config = require("./config.json");
-settings = new Enmap({name: "settings", persistent: true});
-tags = new Enmap({name: "tags", persistent: true});
-blacklist = new Enmap({name: "blacklist", persistent: true});
+const config = require("./config.js");
+const settings = new Enmap({name: "settings", persistent: true});
+const tags = new Enmap({name: "tags", persistent: true});
+const blacklist = new Enmap({name: "blacklist", persistent: true});
 
 let cooldown = new Set();
 
@@ -19,7 +19,7 @@ client.on('message', async (message) => {
   if (message.author.bot) return;
 
   if(!settings.has("prefixes")) {
-    settings.set("prefixes", ['+', '?']);
+    settings.set("prefixes", config.defaultSettings.prefixes);
   }
 
   const prefixes = settings.get('prefixes');
@@ -123,18 +123,21 @@ client.on('message', async (message) => {
 
 client.login(config.token);
 
-const permLevel = async (message) => {
-  if(message.author.id === config.ownerID) return 4;
-  if(message.member.roles.some(r=>['41771983423143936', '180036462832648192'].includes(r.id))) {
-    return 3
-  }
-  if(message.member.roles.some(r=>['203287359125585920', '231560987508080650'].includes(r.id))) {
-    return 2
-  }
-  if(blacklist.has(message.author.id)) return -1;
-  return 0;
-}
+const permLevel = (message) => {
+  let permlvl = 0;
+  
+  const permOrder = config.permLevels.slice(0).sort((p, c) => p.level < c.level ? 1 : -1);
 
+  while (permOrder.length) {
+    const currentLevel = permOrder.shift();
+    if (message.guild && currentLevel.guildOnly) continue;
+    if (currentLevel.check(message)) {
+      permlvl = currentLevel.level;
+      break;
+    }
+  }
+  return permlvl;
+}
 
 clean = (text) => {
   if (typeof text !== 'string')

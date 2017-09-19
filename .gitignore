@@ -3,6 +3,7 @@ logs
 *.log
 npm-debug.log*
 config.json
+config.js
 data/
 
 # Runtime data
