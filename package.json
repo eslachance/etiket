@@ -1,0 +1,17 @@
+{
+  "name": "etiket",
+  "version": "0.0.1",
+  "description": "Just Another Tagbot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Evelyne Lachance <eslachance@gmail.com> (http://evie.codes/)",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^11.2.1",
+    "enmap": "^0.3.2",
+    "moment": "^2.18.1",
+    "moment-duration-format": "^1.3.0"
+  }
+}
