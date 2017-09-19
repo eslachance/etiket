@@ -37,6 +37,25 @@ To start etiket, in the command prompt, run the following command:
 
 > If at any point it says "cannot find module X" just run `npm install X` and try again.
 
+## Commands Reference
+
+The following commands are available in the bot (`<this>` is called a placeholder and you can replace it with actual data!): 
+
+```
+?tag add <tagname> <Contents>       // Creates a new tag with the selected name. Can be multiple lines, markdown, etc. Currently does not support embeds and attachments
+?tag rename <oldname> <newname>     // Rename existing tag
+?tag edit <tagname>                 // Edit tag contents
+?tag del <tagname>                  // Delete tag (cannot undo!)
+
+?tagname                            // Tags are accessed by prefix+tagname.
+
+?blacklist add <IDorUserMention>    // Prevents user from using bot completely
+?blacklist remove <IDorUserMention> // Restores access to bot commands
+
+?eval <code>                        // Owner only, evals arbitrary javascript. useful for debugging/custom stuff
+
+```
+
 ## Permanent run and Auto-restart
 
 To run the bot permanently, you'll need `pm2`
