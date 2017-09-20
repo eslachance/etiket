@@ -15,6 +15,10 @@ const blacklist = new Enmap({name: "blacklist", persistent: true});
 
 let cooldown = new Set();
 
+client.on('ready', () => {
+  console.log('Ready to serve');
+});
+
 client.on('message', async (message) => {
   if (message.author.bot) return;
 
@@ -29,15 +33,18 @@ client.on('message', async (message) => {
   }
   if(!prefix) return;
 
-  if(blacklist.has(message.author.id)) return;
+
+  if(blacklist.has(message.author.id)) return message.react('🚫');
+
+  const level = permLevel(message);
 
   if(cooldown.has(message.author.id)) {
-    return;
-  } else {
+    return message.react('⏱');
+  } else if (level < 2) {
     cooldown.add(message.author.id);
     setTimeout( () => {
       cooldown.delete(message.author.id);
-    }, 1000);
+    }, config.cooldown);
   }
 
   const args = message.content.slice(prefix.length).trim().split(/ +/g);
@@ -51,37 +58,36 @@ client.on('message', async (message) => {
     return message.channel.send(`**\`List of Available Tags\`**\n\`\`\`${tags.keyArray().join(", ")}\`\`\``);
   }
 
-  const level = permLevel(message);
-  if(level === 0) return;
+  if(level < 2) return;
 
   if(command === 'tag') {
     if(args[0] === 'add') {
-      if(level < 2) return message.reply("Insufficient level to add a new tag");
+      if(level < 2) return message.react('🚫');
       const [ name, ...content ] = args.slice(1);
-      if(tags.has(name)) return message.reply("That tag already exists");
+      if(tags.has(name)) return message.channel.send("That tag already exists");
       if(['eval', 'help', 'tag'].includes(name)) return message.reply("Cannot use reserved tag names.");
       tags.set(name, content.join(" "));
-      return message.reply("Tag has been added!");
+      return message.react('☑');
     } else if (args[0] === 'del') {
-      if(level < 3) return message.reply("Insufficient level to delete tags");
+      if(level < 3) return message.react('🚫');
       const name = args[1];
-      if(!tags.has(name)) return message.reply("Tag name not found");
+      if(!tags.has(name)) return message.channel.send("Tag name not found");
       tags.delete(name);
-      return message.reply("Tag has been removed");
+      return message.react('☑');
     } else if (args[0] === 'edit') {
-      if(level < 2) return message.reply("Insufficient level to edit tags");
-      const [ name, ...content ] = args;
-      if(!tags.has(name)) return message.reply("Tag name not found");
-      tags.set(name, contents.join(" "));
-      return message.reply("Tag has been edited!");
+      if(level < 2) return message.react('🚫');
+      const [ name, ...content ] = args.slice(1);
+      if(!tags.has(name)) return message.channel.send("Tag name not found");
+      tags.set(name, content.join(" "));
+      return message.react('☑');
     } else if (args[0] === 'rename') {
-      if(level < 2) return message.reply("Insufficient level to edit tags");
+      if(level < 2) return message.react('🚫');
       const [ oldName, newName ] = args.slice(1);
-      if(!tags.has(oldName)) return message.reply("Tag name not found");
+      if(!tags.has(oldName)) return message.channel.send("Tag name not found");
       const oldTag = tags.get(oldName);
       tags.set(newName, oldTag);
       tags.delete(oldName);
-      return message.reply("Tag has been renamed.");
+      return message.react('☑');
     }
   }
 
@@ -92,7 +98,7 @@ client.on('message', async (message) => {
       if(!user) return message.reply("Cannot resolve mention or ID to a user.");
       if(blacklist.has(user.id)) return message.reply("User's already blacklisted. Whew, Double Blacklist! Harsh.");
       blacklist.set(user.id, message.createdTimestamp);
-      return message.reply("User has been blacklisted.");
+      return message.react('☑');
     } else if (args[0] === 'remove') {
       const user = message.mentions.users.first() || client.users.get(args[1]);
       if(!user) return message.reply("Cannot resolve mention or ID to a user.");
@@ -100,7 +106,8 @@ client.on('message', async (message) => {
       if(!blEntry) return message.reply("User is not blacklisted.");
       const duration = moment.duration(moment.createdTimestamp - blEntry).format(" D [days], H [hrs], m [mins], s [secs]");
       blacklist.delete(user.id);
-      message.reply(`User removed from the blacklist. Was blacklisted: ${duration}`);
+      return message.react('☑');
+      message.channel.send(`User removed from the blacklist. Was blacklisted: ${duration}`);
     }
   }
 
@@ -118,6 +125,15 @@ client.on('message', async (message) => {
       message.channel.send(`\`ERROR\` \`\`\`xl\n${clean(err)}\n\`\`\``);
     }
     return;
+  }
+  
+  if(command === 'reboot') {
+    if (level < 4) return message.reply("Naaaaaah eval is reserved to the almighty Evie.Codes");
+    if (message.author.id !== config.ownerID) {
+      return message.reply("I don't know who you are or how you bypassed the first check but I have a very particular set of skills and I will find you and I will kill you.");
+    }
+    await message.react('☑');
+    process.exit(1);
   }
 });
 
@@ -139,7 +155,7 @@ const permLevel = (message) => {
   return permlvl;
 }
 
-clean = (text) => {
+const clean = (text) => {
   if (typeof text !== 'string')
     text = inspect(text, {depth: 0})
   text = text
