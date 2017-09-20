@@ -4,7 +4,7 @@ const Discord = require('discord.js');
 const client = new Discord.Client({
   disableEveryone: true,
   disabledEvents: config.disabledEvents,
-  messageCacheMaxSize: 0,
+  messageCacheMaxSize: 2,
   messageCacheLifetime: 1
 });
 
