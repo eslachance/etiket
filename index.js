@@ -1,6 +1,12 @@
 /* eslint consistent-return: 0 */
+const config = require('./config.js');
 const Discord = require('discord.js');
-const client = new Discord.Client();
+const client = new Discord.Client({
+  disableEveryone: true,
+  disabledEvents: config.disabledEvents,
+  messageCacheMaxSize: 0,
+  messageCacheLifetime: 1
+});
 
 const Enmap = require('enmap');
 
@@ -9,7 +15,6 @@ require('moment-duration-format');
 
 const { inspect } = require('util');
 
-const config = require('./config.js');
 const settings = new Enmap({ name: 'settings', persistent: true });
 const tags = new Enmap({ name: 'tags', persistent: true });
 const blacklist = new Enmap({ name: 'blacklist', persistent: true });
