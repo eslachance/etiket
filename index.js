@@ -21,10 +21,14 @@ const blacklist = new Enmap({ name: 'blacklist', persistent: true });
 
 const cooldown = new Set();
 
-const validateThrottle = (message, level) => {
+const commands = require('./commands');
+
+const validateThrottle = (message, level, command) => {
   if (blacklist.has(message.author.id)) {
     return [false, 'blacklisted'];
   }
+
+  if (!tags.has(command) && !commands[command]) return [false, 'notfound'];
 
   if (cooldown.has(message.author.id)) {
     return [false, 'throttled'];
@@ -39,120 +43,6 @@ const validateThrottle = (message, level) => {
 
 const getPrefix = (message) => settings.get('prefixes').find((prefix) => message.content.startsWith(prefix));
 
-const commands = {
-  tags: {
-    run: () => [`**\`List of Available Tags\`**\n\`\`\`${tags.keyArray().map(key => `+${key}`).join(' ')}\`\`\``, null],
-    level: 0
-  },
-  list: {
-    run: () => commands.tags.run(),
-    level: () => commands.tags.level
-  },
-  tag: {
-    run: (message, args) => {
-      const [action, name, ...content] = args;
-      let answer;
-      switch (action) {
-        case 'add':
-          if (tags.has(name)) return message.channel.send('That tag already exists');
-          if (['eval', 'help', 'tag', 'list'].includes(name)) return message.reply('Cannot use reserved tag names.');
-          tags.set(name, content.join(' '));
-          answer = [null, '☑'];
-          break;
-        case 'del':
-          if (tags.has(name)) {
-            tags.delete(name);
-            answer = [null, '☑'];
-          } else {
-            answer = ['Tag name not found', null];
-          }
-          break;
-        case 'edit':
-          if (tags.has(name)) {
-            tags.set(name, content.join(' '));
-            answer = [null, '☑'];
-          } else {
-            answer = ['Tag name not found', null];
-          }
-          break;
-        case 'rename':
-          if (tags.has(name)) {
-            const newName = content[0];
-            const oldTag = tags.get(name);
-            tags.set(newName, oldTag);
-            tags.delete(name);
-            answer = [null, '☑'];
-          } else {
-            answer = ['Tag name not found', null];
-          }
-          break;
-        default:
-          answer = [null, '⁉'];
-      }
-      return answer;
-    },
-    level: 2
-  },
-  blacklist: {
-    run: (message, args) => {
-      const action = args[0];
-      let user = args[1];
-      user = client.users.get(args[1]) || message.mentions.users.first();
-      if (!user) return ['Cannot resolve mention or ID to a user.', null];
-      let answer;
-      switch (action) {
-        case 'add':
-          blacklist.set(user.id, message.createdTimestamp);
-          try {
-            message.guild.channels.find('name', 'mod-log')
-              .send(`🚷 ${user.tag} (\`${user.id}\`) added to blacklist by ${message.author.tag} (\`${message.author.id}\`).`);
-          } catch (err) {
-            /* do nothing */
-          }
-          answer = [null, '☑'];
-          break;
-        case 'remove':
-        case 'del':
-          if (blacklist.has(user.id)) {
-            const blEntry = blacklist.get(user.id);
-            const duration = moment.duration(moment.createdTimestamp - blEntry).format(' D [days], H [hrs], m [mins], s [secs]');
-            blacklist.delete(user.id);
-            try {
-              message.guild.channels.find('name', 'mod-log')
-                .send(`☑ ${user.tag} (\`${user.id}\`) removed from the blacklist by ${message.author.tag} (\`${message.author.id}\`). Was blacklisted: ${duration}`);
-            } catch (err) {
-              /* do nothing */
-            }
-            answer = [null, '☑'];
-          } else {
-            answer = ['User not in blacklist.', null];
-          }
-          break;
-        default:
-          answer = [null, '⁉'];
-      }
-      return answer;
-    },
-    level: 2
-  },
-  eval: {
-    run: async (message, args) => {
-      const code = args.join(' ');
-      try {
-        const evaled = clean(await eval(code));
-        return [`\`\`\`xl\n${evaled}\n\`\`\``, null];
-      } catch (err) {
-        return [`\`ERROR\` \`\`\`xl\n${clean(err)}\n\`\`\``, null];
-      }
-    },
-    level: 4
-  },
-  reboot: {
-    run: () => process.exit(1),
-    level: 3
-  }
-};
-
 async function handleMessage(message) {
   if (message.author.bot) return;
 
@@ -162,20 +52,25 @@ async function handleMessage(message) {
   if (message.guild && !message.member) await message.guild.fetchMember(message.author);
   const level = permLevel(message);
 
-  const [valid, status] = validateThrottle(message, level);
+  const args = message.content.slice(prefix.length).trim().split(/ +/g);
+  const command = args.shift().toLowerCase();
+
+  const [valid, status] = validateThrottle(message, level, command);
   if (!valid) {
     switch (status) {
       case 'blacklisted':
         return message.react('🚫');
       case 'throttled':
-        return message.react('⏱');
+        if (message.guild) {
+          return message.react('⏱');
+        }
+        break;
+      case 'notfound':
+        return message.react('⁉');
     }
   }
 
-  const args = message.content.slice(prefix.length).trim().split(/ +/g);
-  const command = args.shift().toLowerCase();
-
-  if (tags.has(command)) {  
+  if (tags.has(command)) {
     return message.channel.send(tags.get(command));
   }
 
@@ -184,7 +79,7 @@ async function handleMessage(message) {
     if (level < thisCommand.level) {
       return message.react('🚫');
     } else {
-      const [answer, reaction] = thisCommand.run(message, args);
+      const [answer, reaction] = await thisCommand.run(message, args);
       if (answer) message.channel.send(answer);
       if (reaction) message.react(reaction);
     }
@@ -193,7 +88,7 @@ async function handleMessage(message) {
 
 client.on('ready', () => {
   console.log('Ready to serve');
-  client.user.setGame(`?tags | Serving DDevs since 2017`);
+  client.user.setActivity(`?tags | Serving DDevs since 2017`);
 });
 client.on('message', handleMessage);
 
