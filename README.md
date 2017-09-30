@@ -71,6 +71,7 @@ pm2 start index.js --name="etiket"
 - To view the logs, just run `pm2 logs etiket`
 - To restart the bot, run `pm2 restart etiket`
 - To stop it, run `pm2 stop etiket`
+- To setup auto start at boot, run `pm2 startup`, run the snip of text that it outputs, then run `pm2 save`.
 
 ## Support
 
