@@ -4,8 +4,8 @@ const Discord = require('discord.js');
 const client = new Discord.Client({
   disableEveryone: true,
   disabledEvents: config.disabledEvents,
-  messageCacheMaxSize: 2,
-  messageCacheLifetime: 1
+  messageCacheMaxSize: 10,
+  messageCacheLifetime: 10
 });
 
 const Enmap = require('enmap');
@@ -37,7 +37,7 @@ const commands = {
       switch (action) {
         case 'add':
           if (tags.has(name)) return message.channel.send('That tag already exists');
-          if (['eval', 'help', 'tag', 'list'].includes(name)) return message.reply('Cannot use reserved tag names.');
+          if (['eval', 'tag', 'list'].includes(name)) return message.reply('Cannot use reserved tag names.');
           tags.set(name, content.join(' '));
           answer = [null, '☑'];
           break;
@@ -142,8 +142,6 @@ const validateThrottle = (message, level, command) => {
     return [false, 'blacklisted'];
   }
 
-  if (!tags.has(command) && !commands[command]) return [false, 'notfound'];
-
   if (cooldown.has(message.author.id)) {
     return [false, 'throttled'];
   } else if (level < 2) {
@@ -163,7 +161,7 @@ async function handleMessage(message) {
   const prefix = getPrefix(message);
   if (!prefix) return;
 
-  if (message.guild && !message.member) await message.guild.fetchMember(message.author);
+  if (message.guild && !message.member) await message.guild.members.fetch(message.author);
   const level = permLevel(message);
 
   const args = message.content.slice(prefix.length).trim().split(/ +/g);
@@ -179,8 +177,6 @@ async function handleMessage(message) {
           return message.react('⏱');
         }
         break;
-      case 'notfound':
-        return message.react('⁉');
     }
   }
 
