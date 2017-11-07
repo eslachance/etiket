@@ -23,7 +23,13 @@ const cooldown = new Set();
 
 const commands = {
   tags: {
-    run: () => [`**\`List of Available Tags\`**\n\`\`\`${tags.keyArray().map(key => `+${key}`).join(' ')}\`\`\``, null],
+    run: (message) => {
+      const list = `**\`List of Available Tags. They can be used in this direct message as much as you want, but are throttled on the server.\`**\n\`\`\`${tags.keyArray().map(key => `+${key}`).join(' ')}\`\`\``;
+      message.author.send(list).catch(e=> {
+        return [`Please enable direct messages on this server and run this command again to get a list of tags.`, '❌'];
+      });
+      return [null,  '☑'];
+    },
     level: 0
   },
   list: {
