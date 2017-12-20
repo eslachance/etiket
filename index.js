@@ -177,7 +177,7 @@ async function handleMessage(message) {
   if (!valid) {
     switch (status) {
       case 'blacklisted':
-        return message.react('🚫');
+        return;
       case 'throttled':
         if (message.guild) {
           return message.react('⏱');
