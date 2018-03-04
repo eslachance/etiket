@@ -97,7 +97,11 @@ const commands = {
         case 'add':
           user = client.users.get(args[1]) || message.mentions.users.first();
           if (!user) return [message.strings.cantfinduser, null];
-          blacklist.set(`${message.guild.id}-${user.id}`, message.createdTimestamp);
+          blacklist.set(`${message.guild.id}-${user.id}`, {
+            user: user.id,
+            guild: message.guild.id,
+            time: message.createdTimestamp
+          });
           message.guild.channels.find('name', message.settings.modlog)
             .send(message.strings.addedtoblacklist
               .replace('{user.tag}', user.tag)
@@ -113,7 +117,7 @@ const commands = {
           if (!user) return [message.strings.cantfinduser, null];
           if (blacklist.has(`${message.guild.id}-${user.id}`)) {
             const blEntry = blacklist.get(`${message.guild.id}-${user.id}`);
-            const duration = moment.duration(moment.createdTimestamp - blEntry).format(' D [days], H [hrs], m [mins], s [secs]');
+            const duration = moment.duration(moment.createdTimestamp - blEntry.time).format(' D [days], H [hrs], m [mins], s [secs]');
             blacklist.delete(`${message.guild.id}-${user.id}`);
             message.guild.channels.find('name', message.settings.modlog)
               .send(message.strings.addedtoblacklist
@@ -130,7 +134,7 @@ const commands = {
           break;
         case 'view':
           const blIDs = blacklist.filter(entry => entry.guild === message.guild.id);
-          const list = blIDs.map(id => `${id} ... ${client.users.get(id).tag}`);
+          const list = blIDs.map(entry => `${entry.user} ... ${client.users.get(entry.user).tag}`);
           if(!list.length) {
             answer = ['The blacklist is empty.', null] 
           } else {
@@ -151,7 +155,6 @@ const commands = {
         return ['Uhhhh how are you seeing this?', null];
       }
       const [action, key, ...val] = args;
-      console.log(action, key, val);
       switch (action) {
         case 'set': case 'edit':
           if (!message.settings[key]) {
@@ -233,7 +236,7 @@ const commands = {
 module.exports = commands;
 
 const validateThrottle = (message, level) => {
-  if (blacklist.has(message.author.id)) {
+  if (blacklist.has(`${message.guild.id}-${message.author.id}`)) {
     return [false, 'blacklisted'];
   }
 
@@ -289,7 +292,7 @@ async function handleMessage(message) {
   }
 
   if (tags.has(`${message.guild.id}-${command}`)) {
-    return message.channel.send(tags.get(`${message.guild.id}-${command}`.content));
+    return message.channel.send(tags.get(`${message.guild.id}-${command}`).content);
   }
 
   if (commands[command]) {
@@ -351,4 +354,4 @@ process.on('uncaughtException', (err) => {
   // process.exit(1);
 });
 
-// process.on('unhandledRejection', console.dir);
+process.on('unhandledRejection', console.dir);
