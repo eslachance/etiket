@@ -92,11 +92,11 @@ const commands = {
     run: (message, args) => {
       const action = args[0];
       let user = args[1];
-      user = client.users.get(args[1]) || message.mentions.users.first();
-      if (!user) return [message.strings.cantfinduser, null];
       let answer;
       switch (action) {
         case 'add':
+          user = client.users.get(args[1]) || message.mentions.users.first();
+          if (!user) return [message.strings.cantfinduser, null];
           blacklist.set(`${message.guild.id}-${user.id}`, message.createdTimestamp);
           message.guild.channels.find('name', message.settings.modlog)
             .send(message.strings.addedtoblacklist
@@ -109,6 +109,8 @@ const commands = {
           break;
         case 'remove':
         case 'del':
+          user = client.users.get(args[1]) || message.mentions.users.first();
+          if (!user) return [message.strings.cantfinduser, null];
           if (blacklist.has(`${message.guild.id}-${user.id}`)) {
             const blEntry = blacklist.get(`${message.guild.id}-${user.id}`);
             const duration = moment.duration(moment.createdTimestamp - blEntry).format(' D [days], H [hrs], m [mins], s [secs]');
@@ -127,9 +129,11 @@ const commands = {
           }
           break;
         case 'view':
-          {
-            const blIDs = blacklist.filter(entry => entry.guild === message.guild.id);
-            const list = blIDs.map(id => `${id} ... ${client.users.get(id).tag}`);
+          const blIDs = blacklist.filter(entry => entry.guild === message.guild.id);
+          const list = blIDs.map(id => `${id} ... ${client.users.get(id).tag}`);
+          if(!list.length) {
+            answer = ['The blacklist is empty.', null] 
+          } else {
             answer = [`\`\`\`${list}\`\`\``, null];
           }
           break;
@@ -204,6 +208,10 @@ const commands = {
     },
     level: 3
   },
+  level: {
+    run: async (message) => [`You are level ${message.author.level}`, null],
+    level: 0
+  },
   eval: {
     run: async (message, args) => {
       const code = args.join(' ');
@@ -261,6 +269,7 @@ async function handleMessage(message) {
 
   if (message.guild && !message.member) await message.guild.members.fetch(message.author);
   const level = permLevel(message);
+  message.author.level = level;
 
   const args = message.content.slice(prefix.length).trim().split(/ +/g);
   const command = args.shift().toLowerCase();
