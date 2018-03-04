@@ -30,6 +30,7 @@ Once finished:
 - In the folder from where you ran the git command, run `cd etiket` and then run `npm i`
 - Rename `config.js.example` to `config.js`
 - Edit `config.js` and enter your token and other details as indicated.
+- Execute `node initlangs.js`. This will import all the language strings into the database.
 
 ## First Start
 
@@ -53,6 +54,7 @@ The following commands are available in the bot (`<this>` is called a placeholde
 
 // Blacklist are Moderator or higher only
 ?blacklist add <IDorUserMention>    // Prevents user from using bot completely
+?blacklist view                     // Displays all users currently in the blacklist.
 ?blacklist remove <IDorUserMention> // Restores access to bot commands
 
 // Settings are Admin/Guild owner only
@@ -63,7 +65,6 @@ The following commands are available in the bot (`<this>` is called a placeholde
 ?settings del <setting> <value>     // For array settings, remove the value from the settings array.
 
 ?eval <code>                        // Owner only, evals arbitrary javascript. useful for debugging/custom stuff
-
 ```
 
 ## Permanent run and Auto-restart

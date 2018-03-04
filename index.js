@@ -98,7 +98,7 @@ const commands = {
       switch (action) {
         case 'add':
           blacklist.set(`${message.guild.id}-${user.id}`, message.createdTimestamp);
-          message.guild.channels.find('name', 'mod-log')
+          message.guild.channels.find('name', message.settings.modlog)
             .send(message.strings.addedtoblacklist
               .replace('{user.tag}', user.tag)
               .replace('{user.id}', user.id)
@@ -113,7 +113,7 @@ const commands = {
             const blEntry = blacklist.get(`${message.guild.id}-${user.id}`);
             const duration = moment.duration(moment.createdTimestamp - blEntry).format(' D [days], H [hrs], m [mins], s [secs]');
             blacklist.delete(`${message.guild.id}-${user.id}`);
-            message.guild.channels.find('name', 'mod-log')
+            message.guild.channels.find('name', message.settings.modlog)
               .send(message.strings.addedtoblacklist
                 .replace('{user.tag}', user.tag)
                 .replace('{user.id}', user.id)
@@ -124,6 +124,13 @@ const commands = {
             answer = [null, '☑'];
           } else {
             answer = [message.strings.usernotinblacklist, null];
+          }
+          break;
+        case 'view':
+          {
+            const blIDs = blacklist.filter(entry => entry.guild === message.guild.id);
+            const list = blIDs.map(id => `${id} ... ${client.users.get(id).tag}`);
+            answer = [`\`\`\`${list}\`\`\``, null];
           }
           break;
         default:
