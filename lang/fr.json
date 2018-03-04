@@ -1,6 +1,6 @@
 {
   "strings": {
-    "taglist": "**`Liste des étiquettes. Elle peuvent être utilisées en message direct sans limite mais leur utilisation est limitée sur les serveurs.`**\n```{tags}```",
+    "taglist": "**`Liste des étiquettes disponibles.`**\n```{tags}```",
     "enabledms": "Veuillez activer les messages privés sur ce serveur et executer cette commande à nouveau pour voir la liste des étiquettes.",
     "tagexists": "Cette étiquette existe déjà.",
     "reservedtagname": "Ce nom d'étiquette est réservé à l'interne.",

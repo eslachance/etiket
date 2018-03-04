@@ -1,6 +1,6 @@
 {
   "strings": {
-    "taglist": "**`List of Available Tags. They can be used in this direct message as much as you want, but are throttled on the server.`**\n```{tags}```",
+    "taglist": "**`List of Available Tags:`**\n```{tags}```",
     "enabledms": "Please enable direct messages on this server and run this command again to get a list of tags.",
     "tagexists": "That tag already exists",
     "reservedtagname": "Cannot use reserved tag names.",

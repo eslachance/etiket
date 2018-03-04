@@ -10,8 +10,7 @@ const config = {
     prefixes: ['+', '?'],
     lang: 'en',
     admins: [],
-    mods: [],
-    blacklist: []
+    mods: []
   },
 
   mongodb: { url: 'mongodb://user:password@localhost:27017/enmap' },

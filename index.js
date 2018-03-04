@@ -21,9 +21,10 @@ const cooldown = new Set();
 const commands = {
   tags: {
     run: async (message) => {
-      const list = message.strings.taglist.replace('{tags}', tags.keyArray().map(key => `+${key}`).join(' '));
+      const tagslist = tags.filter(tag => tag.guild === message.guild.id).map(tag => `+${tag.name}`).join(' ');
+      const list = message.strings.taglist.replace('{tags}', tagslist);
       try {
-        return [await message.author.send(list), null];
+        return [list, null];
       } catch (err) {
         return [message.strings.enabledms, '❌'];
       }
@@ -40,33 +41,41 @@ const commands = {
       let answer;
       switch (action) {
         case 'add':
-          if (tags.has(name)) return message.channel.send(message.strings.tagexists);
-          if (['eval', 'tag', 'list'].includes(name)) return message.reply(message.strings.reservedtagname);
-          tags.set(name, content.join(' '));
+          if (tags.has(`${message.guild.id}-${name}`)) return message.channel.send(message.strings.tagexists);
+          if (Object.keys(commands).includes(name)) return message.reply(message.strings.reservedtagname);
+          tags.set(`${message.guild.id}-${name}`, {
+            guild: message.guild.id,
+            content: content.join(' '),
+            name
+          });
           answer = [null, '☑'];
           break;
         case 'del':
-          if (tags.has(name)) {
-            tags.delete(name);
+          if (tags.has(`${message.guild.id}-${name}`)) {
+            tags.delete(`${message.guild.id}-${name}`);
             answer = [null, '☑'];
           } else {
             answer = [message.strings.tagnotfound, null];
           }
           break;
         case 'edit':
-          if (tags.has(name)) {
-            tags.set(name, content.join(' '));
+          if (tags.has(`${message.guild.id}-${name}`)) {
+            tags.set(`${message.guild.id}-${name}`, {
+              guild: message.guild.id,
+              content: content.join(' '),
+              name
+            });
             answer = [null, '☑'];
           } else {
             answer = [message.strings.tagnotfound, null];
           }
           break;
         case 'rename':
-          if (tags.has(name)) {
+          if (tags.has(`${message.guild.id}-${name}`)) {
             const newName = content[0];
-            const oldTag = tags.get(name);
-            tags.set(newName, oldTag);
-            tags.delete(name);
+            const oldTag = tags.get(`${message.guild.id}-${name}`);
+            tags.set(`${message.guild.id}-${newName}`, oldTag);
+            tags.delete(`${message.guild.id}-${name}`);
             answer = [null, '☑'];
           } else {
             answer = [message.strings.tagnotfound, null];
@@ -88,7 +97,7 @@ const commands = {
       let answer;
       switch (action) {
         case 'add':
-          blacklist.set(user.id, message.createdTimestamp);
+          blacklist.set(`${message.guild.id}-${user.id}`, message.createdTimestamp);
           message.guild.channels.find('name', 'mod-log')
             .send(message.strings.addedtoblacklist
               .replace('{user.tag}', user.tag)
@@ -100,10 +109,10 @@ const commands = {
           break;
         case 'remove':
         case 'del':
-          if (blacklist.has(user.id)) {
-            const blEntry = blacklist.get(user.id);
+          if (blacklist.has(`${message.guild.id}-${user.id}`)) {
+            const blEntry = blacklist.get(`${message.guild.id}-${user.id}`);
             const duration = moment.duration(moment.createdTimestamp - blEntry).format(' D [days], H [hrs], m [mins], s [secs]');
-            blacklist.delete(user.id);
+            blacklist.delete(`${message.guild.id}-${user.id}`);
             message.guild.channels.find('name', 'mod-log')
               .send(message.strings.addedtoblacklist
                 .replace('{user.tag}', user.tag)
@@ -263,8 +272,8 @@ async function handleMessage(message) {
     }
   }
 
-  if (tags.has(command)) {
-    return message.channel.send(tags.get(command));
+  if (tags.has(`${message.guild.id}-${command}`)) {
+    return message.channel.send(tags.get(`${message.guild.id}-${command}`.content));
   }
 
   if (commands[command]) {
