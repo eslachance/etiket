@@ -1,38 +1,44 @@
 const config = {
   // Bot Owner, level 4. A User ID. Should never be anything else than the bot owner's ID.
-  "ownerID": "123456789123456",
-
-  // Server Admins, level 3. Array of Role IDs.
-  "admins": ['123456789123456', '123456789123456'],
-
-  // Server Support, level 2. Array of Role IDs.
-  "support": ['123456789123456', '123456789123456'],
+  ownerID: "123456789123456",
 
   // Your Bot's Token. Available on https://discordapp.com/developers/applications/me
-  "token": "mfa.VkO_2G4Qv3T--NO--lWetW_tjND--TOKEN--QFTm6YGtzq9PH--4U--tG0",
+  token: "mfa.VkO_2G4Qv3T--NO--lWetW_tjND--TOKEN--QFTm6YGtzq9PH--4U--tG0",
 
-  // Default per-server settings. New guilds have these settings. 
-  "defaultSettings" : {
-    "prefixes": ["+", "?"]
+  // Default per-server settings. New guilds have these settings.
+  defaultSettings: {
+    prefixes: ['+', '?'],
+    lang: 'en',
+    admins: [],
+    mods: [],
+    blacklist: []
   },
 
+  mongodb: { url: 'mongodb://user:password@localhost:27017/enmap' },
+
   permLevels: [
-    { level: 0,
-      name: "User",
+    {
+      level: 0,
+      name: 'User',
       check: () => true
     },
-    { level: 2,
-      name: "Moderator",
+    {
+      level: 2,
+      name: 'Moderator',
       guildOnly: true,
       check: (message) => message.member.roles.some(role => config.support.includes(role.id))
     },
-    { level: 3,
-      name: "Administrator", 
+    {
+      level: 3,
+      name: 'Administrator',
       guildOnly: true,
-      check: (message) => message.member.roles.some(role => config.admins.includes(role.id))
+      check: (message) => message.member.roles.some(role => config.admins.includes(role.id)) ||
+        message.member.roles.some(role => role.hasPermission('ADMINISTRATOR')) ||
+        message.author.id === message.guild.owner.user.id
     },
-    { level: 4,
-      name: "Bot Owner",
+    {
+      level: 4,
+      name: 'Bot Owner',
       check: (message) => config.ownerID === message.author.id
     }
   ]

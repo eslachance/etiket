@@ -1,4 +1,8 @@
 /* eslint consistent-return: 0 */
+const moment = require('moment');
+require('moment-duration-format');
+const { inspect } = require('util');
+
 const config = require('./config.js');
 const Discord = require('discord.js');
 const client = new Discord.Client({
@@ -8,27 +12,21 @@ const client = new Discord.Client({
   messageCacheLifetime: 10
 });
 
+const Provider = require('enmap-mongo');
 const Enmap = require('enmap');
-
-const moment = require('moment');
-require('moment-duration-format');
-
-const { inspect } = require('util');
-
-const settings = new Enmap({ name: 'settings', persistent: true });
-const tags = new Enmap({ name: 'tags', persistent: true });
-const blacklist = new Enmap({ name: 'blacklist', persistent: true });
+const { settings, tags, blacklist, langs } = Enmap.multi(['settings', 'tags', 'blacklist', 'langs'], Provider, { url: config.mongodb.url });
 
 const cooldown = new Set();
 
 const commands = {
   tags: {
-    run: (message) => {
-      const list = `**\`List of Available Tags. They can be used in this direct message as much as you want, but are throttled on the server.\`**\n\`\`\`${tags.keyArray().map(key => `+${key}`).join(' ')}\`\`\``;
-      message.author.send(list).catch(e=> {
-        return [`Please enable direct messages on this server and run this command again to get a list of tags.`, '❌'];
-      });
-      return [null,  '☑'];
+    run: async (message) => {
+      const list = message.strings.taglist.replace('{tags}', tags.keyArray().map(key => `+${key}`).join(' '));
+      try {
+        return [await message.author.send(list), null];
+      } catch (err) {
+        return [message.strings.enabledms, '❌'];
+      }
     },
     level: 0
   },
@@ -42,8 +40,8 @@ const commands = {
       let answer;
       switch (action) {
         case 'add':
-          if (tags.has(name)) return message.channel.send('That tag already exists');
-          if (['eval', 'tag', 'list'].includes(name)) return message.reply('Cannot use reserved tag names.');
+          if (tags.has(name)) return message.channel.send(message.strings.tagexists);
+          if (['eval', 'tag', 'list'].includes(name)) return message.reply(message.strings.reservedtagname);
           tags.set(name, content.join(' '));
           answer = [null, '☑'];
           break;
@@ -52,7 +50,7 @@ const commands = {
             tags.delete(name);
             answer = [null, '☑'];
           } else {
-            answer = ['Tag name not found', null];
+            answer = [message.strings.tagnotfound, null];
           }
           break;
         case 'edit':
@@ -60,7 +58,7 @@ const commands = {
             tags.set(name, content.join(' '));
             answer = [null, '☑'];
           } else {
-            answer = ['Tag name not found', null];
+            answer = [message.strings.tagnotfound, null];
           }
           break;
         case 'rename':
@@ -71,7 +69,7 @@ const commands = {
             tags.delete(name);
             answer = [null, '☑'];
           } else {
-            answer = ['Tag name not found', null];
+            answer = [message.strings.tagnotfound, null];
           }
           break;
         default:
@@ -86,17 +84,18 @@ const commands = {
       const action = args[0];
       let user = args[1];
       user = client.users.get(args[1]) || message.mentions.users.first();
-      if (!user) return ['Cannot resolve mention or ID to a user.', null];
+      if (!user) return [message.strings.cantfinduser, null];
       let answer;
       switch (action) {
         case 'add':
           blacklist.set(user.id, message.createdTimestamp);
-          try {
-            message.guild.channels.find('name', 'mod-log')
-              .send(`🚷 ${user.tag} (\`${user.id}\`) added to blacklist by ${message.author.tag} (\`${message.author.id}\`).`);
-          } catch (err) {
-            /* do nothing */
-          }
+          message.guild.channels.find('name', 'mod-log')
+            .send(message.strings.addedtoblacklist
+              .replace('{user.tag}', user.tag)
+              .replace('{user.id}', user.id)
+              .replace('{author.tag}', message.author.tag)
+              .replace('{author.id}', message.author.id))
+            .catch();
           answer = [null, '☑'];
           break;
         case 'remove':
@@ -105,15 +104,17 @@ const commands = {
             const blEntry = blacklist.get(user.id);
             const duration = moment.duration(moment.createdTimestamp - blEntry).format(' D [days], H [hrs], m [mins], s [secs]');
             blacklist.delete(user.id);
-            try {
-              message.guild.channels.find('name', 'mod-log')
-                .send(`☑ ${user.tag} (\`${user.id}\`) removed from the blacklist by ${message.author.tag} (\`${message.author.id}\`). Was blacklisted: ${duration}`);
-            } catch (err) {
-              /* do nothing */
-            }
+            message.guild.channels.find('name', 'mod-log')
+              .send(message.strings.addedtoblacklist
+                .replace('{user.tag}', user.tag)
+                .replace('{user.id}', user.id)
+                .replace('{author.tag}', message.author.tag)
+                .replace('{author.id}', message.author.id)
+                .replace('{duration}', duration))
+              .catch();
             answer = [null, '☑'];
           } else {
-            answer = ['User not in blacklist.', null];
+            answer = [message.strings.usernotinblacklist, null];
           }
           break;
         default:
@@ -122,6 +123,70 @@ const commands = {
       return answer;
     },
     level: 2
+  },
+  settings: {
+    run: async (message, args) => {
+      let answer;
+      if (!message.guild.id) {
+        return ['Uhhhh how are you seeing this?', null];
+      }
+      const [action, key, ...val] = args;
+      console.log(action, key, val);
+      switch (action) {
+        case 'set': case 'edit':
+          if (!message.settings[key]) {
+            return [message.strings.invalidsetting, null];
+          }
+          if (message.settings[key].constructor.name.toLowerCase() === 'array') {
+            return [message.strings.settingisarray, null];
+          }
+          message.settings[key] = val.join(' ');
+          settings.set(message.guild.id, message.settings);
+          answer = [null, '☑'];
+          break;
+        case 'reset':
+          if (!message.settings[key]) {
+            return [message.strings.invalidsetting, null];
+          }
+          delete message.settings[key];
+          settings.set(message.guild.id, message.settings);
+          answer = [null, '☑'];
+          break;
+        case 'add': case 'append':
+          if (!message.settings[key]) {
+            return [message.strings.invalidsetting, null];
+          }
+          if (!message.settings[key].constructor.name.toLowerCase() === 'array') {
+            return [message.strings.settingnotarray, null];
+          }
+          if (message.settings[key].indexOf(val.join(' ')) > -1) {
+            return ['This value is already in the settings array.', null];
+          }
+          message.settings[key].push(val.join(' '));
+          settings.set(message.guild.id, message.settings);
+          answer = [null, '☑'];
+          break;
+        case 'del': case 'remove':
+          if (!message.settings[key]) {
+            return [message.strings.invalidsetting, null];
+          }
+          if (!message.settings[key].constructor.name.toLowerCase() === 'array') {
+            return [message.strings.settingnotarray, null];
+          }
+          if (message.settings[key].indexOf(val.join(' ')) < 0) {
+            return [message.strings.cantfindinarray, null];
+          }
+          message.settings[key].slice(message.settings[key].indexOf(val.join(' ')), 1);
+          settings.set(message.guild.id, message.settings);
+          answer = [null, '☑'];
+          break;
+        case 'list': case 'view': default:
+          answer = [JSON.stringify(message.settings), null];
+          break;
+      }
+      return answer;
+    },
+    level: 3
   },
   eval: {
     run: async (message, args) => {
@@ -143,7 +208,7 @@ const commands = {
 
 module.exports = commands;
 
-const validateThrottle = (message, level, command) => {
+const validateThrottle = (message, level) => {
   if (blacklist.has(message.author.id)) {
     return [false, 'blacklisted'];
   }
@@ -159,10 +224,21 @@ const validateThrottle = (message, level, command) => {
   return [true, null];
 };
 
-const getPrefix = (message) => settings.get('prefixes').find((prefix) => message.content.startsWith(prefix));
+const getPrefix = (message) => message.settings.prefixes.find((prefix) => message.content.startsWith(prefix));
+
+const getSettings = (message) => {
+  const def = config.defaultSettings;
+  if (!message.guild) return def;
+  const overrides = settings.get(message.guild.id) || {};
+  for (const key in def) {
+    overrides[key] = overrides[key] || def[key];
+  }
+  return overrides;
+};
 
 async function handleMessage(message) {
   if (message.author.bot) return;
+  message.settings = getSettings(message);
 
   const prefix = getPrefix(message);
   if (!prefix) return;
@@ -172,6 +248,7 @@ async function handleMessage(message) {
 
   const args = message.content.slice(prefix.length).trim().split(/ +/g);
   const command = args.shift().toLowerCase();
+  message.strings = langs.get(message.settings.lang);
 
   const [valid, status] = validateThrottle(message, level, command);
   if (!valid) {
@@ -204,8 +281,12 @@ async function handleMessage(message) {
 
 client.on('ready', () => {
   console.log('Ready to serve');
-  client.user.setActivity(`?tags | Serving DDevs since 2017`);
+  client.user.setActivity(`?tags`);
+  client.guilds.forEach(guild => {
+    if (!settings.has(guild.id)) settings.set(guild.id, settings.defaultConfig);
+  });
 });
+
 client.on('message', handleMessage);
 
 client.login(config.token);
@@ -245,6 +326,4 @@ process.on('uncaughtException', (err) => {
   // process.exit(1);
 });
 
-process.on('unhandledRejection', err => {
-  console.error('Uncaught Promise Error: ', err);
-});
+// process.on('unhandledRejection', console.dir);

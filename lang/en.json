@@ -1,0 +1,17 @@
+{
+  "strings": {
+    "taglist": "**`List of Available Tags. They can be used in this direct message as much as you want, but are throttled on the server.`**\n```{tags}```",
+    "enabledms": "Please enable direct messages on this server and run this command again to get a list of tags.",
+    "tagexists": "That tag already exists",
+    "reservedtagname": "Cannot use reserved tag names.",
+    "tagnotfound": "Tag name not found",
+    "cantfinduser": "Cannot resolve mention or ID to a user.",
+    "usernotinblacklist": "User not in blacklist.",
+    "addedtoblacklist": "🚷 {user.tag} (`{user.id}`) added to blacklist by {author.tag} (`{author.id}`).",
+    "removedfromblacklist": "☑ {user.tag} (`{user.id}`) removed from the blacklist by {author.tag} (`{author.id}`). Was blacklisted: {duration}",
+    "invalidsetting": "Invalid settings key.",
+    "settingnotarray": "This setting is an not an array.",
+    "settingisarray": "This setting is an array. Use the `add` and `remove` actions.",
+    "cantfindinarray": "Cannot find this value in the settings array."
+  }
+}
