@@ -14,7 +14,7 @@ const client = new Discord.Client({
 
 const Provider = require('enmap-mongo');
 const Enmap = require('enmap');
-const { settings, tags, blacklist, langs } = Enmap.multi(['settings', 'tags', 'blacklist', 'langs'], Provider, { url: config.mongodb.url });
+const { settings, tags, blacklist, langs, testing } = Enmap.multi(['settings', 'tags', 'blacklist', 'langs', 'testing'], Provider, { url: config.mongodb.url });
 
 const cooldown = new Set();
 
@@ -34,6 +34,14 @@ const commands = {
   list: {
     run: () => commands.tags.run(),
     level: () => commands.tags.level
+  },
+  test: {
+    run: (message, args) => {
+      const myEmbed = new Discord.MessageEmbed();
+      myEmbed.setDescription(args.join(" "));
+      message.channel.send({embed: myEmbed});
+    },
+    level: 4
   },
   tag: {
     run: (message, args) => {
@@ -236,7 +244,7 @@ const commands = {
 module.exports = commands;
 
 const validateThrottle = (message, level) => {
-  if (blacklist.has(`${message.guild.id}-${message.author.id}`)) {
+  if ( (message.guild && blacklist.has(`${message.guild.id}-${message.author.id}`) ) || blacklist.has(message.author.id)) {
     return [false, 'blacklisted'];
   }
 
@@ -310,12 +318,11 @@ async function handleMessage(message) {
 client.on('ready', () => {
   console.log('Ready to serve');
   client.user.setActivity(`?tags`);
-  client.guilds.forEach(guild => {
-    if (!settings.has(guild.id)) settings.set(guild.id, settings.defaultConfig);
-  });
 });
 
 client.on('message', handleMessage);
+
+client.on('error', (o_O)=>{});
 
 client.login(config.token);
 
@@ -350,8 +357,8 @@ const clean = (text) => {
   // These 2 process methods will catch exceptions and give *more details* about the error and stack trace.
 process.on('uncaughtException', (err) => {
   const errorMsg = err.stack.replace(new RegExp(`${__dirname}/`, 'g'), './');
-  console.error('Uncaught Exception: ', errorMsg);
-  // process.exit(1);
+  console.dir(errorMsg);
+  process.exit(1);
 });
 
 process.on('unhandledRejection', console.dir);
